@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from playwright.async_api import async_playwright
 import os
+import asyncio  # ✅ Added for proper sleep
 
 app = FastAPI()
 
