@@ -39,13 +39,15 @@ async def scrape(request: Request):
             await page.goto(url, timeout=60000)
             await page.wait_for_timeout(2000)
 
-            # 🧠 Simulate scrolling like a human
+            # Save screenshot immediately after page load
+            await page.screenshot(path="debug.png", full_page=True)
+
+            # Simulate human behavior
             for y in range(0, 1000, 100):
                 await page.mouse.move(random.randint(200, 600), y)
                 await page.mouse.wheel(0, 100)
                 await page.wait_for_timeout(random.randint(300, 700))
 
-            # 👁️ Simulate some hover/move actions
             await page.mouse.move(500, 300)
             await page.wait_for_timeout(1000)
             await page.mouse.move(700, 500)
@@ -56,7 +58,6 @@ async def scrape(request: Request):
             await page.wait_for_selector("a.breadcrumb", timeout=30000, state="attached")
             await page.wait_for_selector(".description", timeout=30000, state="attached")
 
-            # Scrape
             title = await page.text_content("h1") or "N/A"
             category = await page.locator("a.breadcrumb").first.text_content()
             category = category.strip() if category else "N/A"
@@ -69,11 +70,13 @@ async def scrape(request: Request):
             }
 
     except Exception as e:
-        if page:
-            try:
+        # Try to capture screenshot even if scraping failed early
+        try:
+            if page:
                 await page.screenshot(path="debug.png", full_page=True)
-            except:
-                pass
+        except Exception as err:
+            print("Screenshot failed:", err)
+
         return {"error": str(e), "debug": "/debug"}
 
     finally:
