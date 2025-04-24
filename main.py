@@ -9,6 +9,7 @@ app = FastAPI()
 async def scrape(request: Request):
     data = await request.json()
     url = data.get("url")
+    page = None  # Define early for screenshot fallback
 
     try:
         async with async_playwright() as p:
@@ -21,11 +22,12 @@ async def scrape(request: Request):
             await page.goto(url, timeout=60000)
             await page.wait_for_timeout(3000)
 
-            # Explicit waits for all key elements
-            await page.wait_for_selector("h1", timeout=30000)
-            await page.wait_for_selector("a.breadcrumb", timeout=30000)
-            await page.wait_for_selector(".description", timeout=30000)
+            # Wait for key elements to be attached (not necessarily visible)
+            await page.wait_for_selector("h1", timeout=30000, state="attached")
+            await page.wait_for_selector("a.breadcrumb", timeout=30000, state="attached")
+            await page.wait_for_selector(".description", timeout=30000, state="attached")
 
+            # Extract data
             title = await page.text_content("h1") or "N/A"
             category = await page.locator("a.breadcrumb").first.text_content()
             category = category.strip() if category else "N/A"
@@ -40,11 +42,12 @@ async def scrape(request: Request):
             }
 
     except Exception as e:
-        # Screenshot on error for debugging
-        try:
-            await page.screenshot(path="debug.png", full_page=True)
-        except:
-            pass  # Ignore screenshot failure
+        # Take a screenshot if possible
+        if page:
+            try:
+                await page.screenshot(path="debug.png", full_page=True)
+            except:
+                pass
 
         return {
             "error": str(e),
