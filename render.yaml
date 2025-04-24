@@ -1,10 +1,13 @@
 services:
   - type: web
-    name: ai-scraper-api
-    env: python
+    name: python-scraping-to-make
+    env: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: ./start.sh
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.10
+    repo: https://github.com/RonaldAllanRivera/python-scraping-to-make.git
+    branch: main
+    buildFilter:
+      paths:
+        - Dockerfile
+        - render.yaml
+        - requirements.txt
+    autoDeploy: true
