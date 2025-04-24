@@ -1,10 +1,17 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from playwright.async_api import async_playwright
+import random
 import os
-import asyncio  # ✅ Added for proper sleep
+import asyncio
 
 app = FastAPI()
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/118 Safari/537.36",
+]
 
 @app.post("/scrape")
 async def scrape(request: Request):
@@ -19,28 +26,30 @@ async def scrape(request: Request):
 
     try:
         async with async_playwright() as p:
-            # Use full browser with stealth-like behavior
+            user_agent = random.choice(USER_AGENTS)
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context(
                 viewport={"width": 1280, "height": 720},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+                user_agent=user_agent,
                 java_script_enabled=True,
                 locale="en-US"
             )
             page = await context.new_page()
 
-            # Go to the page
             await page.goto(url, timeout=60000)
-
-            # Simulate human behavior
-            await page.mouse.move(200, 300)
-            await page.wait_for_timeout(1000)
-            await page.keyboard.press("PageDown")
-            await page.wait_for_timeout(1500)
-            await page.mouse.move(400, 500)
-            await page.wait_for_timeout(1000)
-            await page.keyboard.press("PageDown")
             await page.wait_for_timeout(2000)
+
+            # 🧠 Simulate scrolling like a human
+            for y in range(0, 1000, 100):
+                await page.mouse.move(random.randint(200, 600), y)
+                await page.mouse.wheel(0, 100)
+                await page.wait_for_timeout(random.randint(300, 700))
+
+            # 👁️ Simulate some hover/move actions
+            await page.mouse.move(500, 300)
+            await page.wait_for_timeout(1000)
+            await page.mouse.move(700, 500)
+            await page.wait_for_timeout(1500)
 
             # Wait for actual content
             await page.wait_for_selector("h1", timeout=30000, state="attached")
