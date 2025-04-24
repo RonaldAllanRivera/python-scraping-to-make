@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
 from playwright.async_api import async_playwright
+import os
 
 app = FastAPI()
 
@@ -19,14 +21,14 @@ async def scrape(request: Request):
             await page.goto(url, timeout=60000)
             await page.wait_for_timeout(3000)
 
-            # Title
-            title = await page.text_content("h1") or "N/A"
+            # Explicit waits for all key elements
+            await page.wait_for_selector("h1", timeout=30000)
+            await page.wait_for_selector("a.breadcrumb", timeout=30000)
+            await page.wait_for_selector(".description", timeout=30000)
 
-            # Category (first breadcrumb anchor)
+            title = await page.text_content("h1") or "N/A"
             category = await page.locator("a.breadcrumb").first.text_content()
             category = category.strip() if category else "N/A"
-
-            # Content
             content = await page.text_content(".description") or "N/A"
 
             await browser.close()
@@ -38,4 +40,20 @@ async def scrape(request: Request):
             }
 
     except Exception as e:
-        return {"error": str(e)}
+        # Screenshot on error for debugging
+        try:
+            await page.screenshot(path="debug.png", full_page=True)
+        except:
+            pass  # Ignore screenshot failure
+
+        return {
+            "error": str(e),
+            "debug": "/debug"
+        }
+
+@app.get("/debug")
+async def get_debug_screenshot():
+    path = "debug.png"
+    if os.path.exists(path):
+        return FileResponse(path, media_type="image/png")
+    return {"error": "debug.png not found"}
